@@ -1,4 +1,5 @@
 # Main script: process_images.py
+from osgeo import gdal  # noqa: F401 — before fastai to avoid libtiff/jpeg conflicts
 from fastai.vision.all import *
 import torch
 import numpy as np

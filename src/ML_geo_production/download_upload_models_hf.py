@@ -62,9 +62,19 @@ def upload(api: HfApi, file_paths: list[str], repo_id: str, dry_run: bool):
         sys.exit(1)
 
 
+def ensure_dest_dir(dest: Path) -> Path:
+    """Return writable models directory; follow symlinks, create if missing."""
+    if dest.is_symlink():
+        dest = dest.resolve()
+    elif dest.exists() and not dest.is_dir():
+        raise FileExistsError(f"models path exists but is not a directory: {dest}")
+    elif not dest.exists():
+        dest.mkdir(parents=True, exist_ok=True)
+    return dest
+
+
 def download(api: HfApi, dest_dir: str, repo_id: str, dry_run: bool):
-    dest = Path(dest_dir)
-    dest.mkdir(parents=True, exist_ok=True)
+    dest = ensure_dest_dir(Path(dest_dir))
 
     all_files = api.list_repo_files(repo_id=repo_id, repo_type="model")
     pth_files = sorted(f for f in all_files if f.endswith(".pth"))

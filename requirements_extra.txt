@@ -1,5 +1,5 @@
 # Extra pip packages so the same env runs all four repos (ML_Production, ML_geo_production, ML_sdfi_fastai2, multi_channel_dataset_creation).
-# Install after requirements_pip.txt from ML_sdfi_fastai2 and install_local_repos.sh from ML_Production.
+# Install after requirements_pip.txt and install_local_repos.sh from any shared-env repo root.
 paramiko
 sqlalchemy
 tabulate
@@ -8,3 +8,5 @@ geoalchemy2
 pyproj==3.6.1
 # For ML_sdfi_fastai2 branch SOTA_models_2026 (ConvNeXt V2 + UPerNet and other SOTA configs).
 transformers
+# Oracle thin client (no Instant Client) for geodanmark_bygninger_from_time_thin.py
+oracledb

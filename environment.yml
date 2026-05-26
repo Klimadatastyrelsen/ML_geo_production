@@ -11,5 +11,5 @@ dependencies:
   # rasterio (and Pillow) installed via pip from requirements_pip.txt for Windows-compatible builds
   - setuptools<76
   - pip
-  # Pip deps (PyTorch nightly, fastai, git packages, this project) installed in one step after env create:
-  # From repo root: pip install --pre --no-build-isolation -r requirements_pip.txt
+  # Pip deps (PyTorch, fastai, git packages, this project) installed after env create from this repo root:
+  #   bash install_pytorch.sh && pip install --pre --no-build-isolation -r requirements_pip.txt

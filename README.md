@@ -30,35 +30,20 @@ For questions about the repo, email rajoh@kds.dk
 
 ### Conda version
 
-Use **conda** or **mamba** (Miniforge includes conda; mamba is optional). From this repository root (or from a parent folder where all four shared-env repos are cloned as siblings):
+Use **conda** or **mamba** (Miniforge includes conda; mamba is optional). Clone all four shared-env repos as siblings (`ML_Production`, `ML_geo_production`, `ML_sdfi_fastai2`, `multi_channel_dataset_creation`), then run the steps below **from this repository root**. The same files and commands exist in each repo and produce the same `ML_sdfi` environment.
 
 ```sh
-conda env create --file environment.yml
+conda env create --file environment.yml   # once
 conda activate ML_sdfi
+export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH   # Linux
+
+bash install_pytorch.sh
 pip install --pre --no-build-isolation -r requirements_pip.txt
+bash install_local_repos.sh
+pip install -r requirements_extra.txt
 ```
 
-This installs PyTorch nightly with CUDA 12.8 (for NVIDIA Blackwell / RTX 50-series / sm_120 GPUs), fastai, git-based deps, and this package in editable mode.
-
-To install the other shared-env repos and extra deps, from the **project root** (parent of all four repos):
-
-```sh
-cd ML_Production && bash install_local_repos.sh && pip install -r requirements_extra.txt && cd ..
-```
-
-**Other GPUs:** To use stable PyTorch instead of nightly (e.g. cu121), after the steps above run:
-
-```sh
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
-```
-
-(Adjust `cu121` to your CUDA version; see [pytorch.org/get-started/locally](https://pytorch.org/get-started/locally).)
-
-**Use conda's libstdc++ (Linux):** On some Linux systems, set this before running Python:
-
-```sh
-export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
-```
+`install_pytorch.sh` auto-selects the PyTorch CUDA build (nightly cu128 for Blackwell / sm_12.0, stable cu124 for other NVIDIA GPUs). CUDA is required. Override with e.g. `PYTORCH_CUDA=cu121 bash install_pytorch.sh` (see [pytorch.org/get-started/locally](https://pytorch.org/get-started/locally)).
 
 **Verify CUDA support:**
 
@@ -106,13 +91,13 @@ the dataset included in that repository.
 
 ### Download example models
 
-Place a Hugging Face token file in the repo root (e.g. `my_hugging_face_token.txt`) or use the same token file as ML_Production. Then run:
+Place a Hugging Face token file in the repo root (e.g. `my_hugging_face_token.txt`) or use the same token file as ML_Production. When repos are cloned as siblings, models are stored once under **`../ML_Production/models/`** (this repo's `./models/` may be a symlink). Then run:
 
 ```bash
-python src/ML_geo_production/download_upload_models_hf.py --download --token_file ./my_hugging_face_token.txt --file_path ./models/
+python src/ML_geo_production/download_upload_models_hf.py --download --token_file ./my_hugging_face_token.txt --file_path ../ML_Production/models/
 ```
 
-This downloads all `.pth` model files from the default Hugging Face repo into `./models/`. Use `--repo_id` if your models are in a different repo.
+This downloads all `.pth` model files from the default Hugging Face repo. Use `--repo_id` if your models are in a different repo.
 
 **Note:** The example models were trained using the training code from: https://github.com/SDFIdk/ML_model_training
 
@@ -141,18 +126,22 @@ The process_many_areas.py example above shows an example of how to process many 
 
 ## Verify that everything works
 
-Run the Quick Start instructions (clone dataset repo, download models with `download_upload_models_hf.py` if needed), then run:
+Set `export GTIFF_SRS_SOURCE=EPSG` before running (optional; suppresses PROJ/GDAL warnings).
+
+Manual check — run the Quick Start steps (clone dataset repo, download models if needed), then:
 
 ```bash
 python src/ML_geo_production/process_images.py --json config_files/save_probs_preds_and_change_detection.json
 ```
 
-There should be no errors in the output. Alternatively, run the automated verification (downloads models when `my_hugging_face_token.txt` is present, then runs the config above and checks the log):
+There should be no errors in the output.
+
+Automated verification (CUDA check — fails if CUDA unavailable; downloads models to shared `../ML_Production/models/` when `my_hugging_face_token.txt` is present; runs the config above; writes `verification.log`):
 
 ```bash
 python verify_functionality.py
 python check_logs.py
-``` 
+```
 
 ------------------------------------------------------------------------
 ## Model evaluation and summarization
