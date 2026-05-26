@@ -35,7 +35,6 @@ Use **conda** or **mamba** (Miniforge includes conda; mamba is optional). Clone 
 ```sh
 conda env create --file environment.yml   # once
 conda activate ML_sdfi
-export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH   # Linux
 
 bash install_pytorch.sh
 pip install --pre --no-build-isolation -r requirements_pip.txt
