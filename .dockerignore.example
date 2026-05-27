@@ -1,0 +1,22 @@
+# Copy this file to the parent directory (build context) as .dockerignore before building.
+# From parent: cp ML_Production/.dockerignore.example .dockerignore
+# Excludes images and large data. Only .pth files in ML_Production/models/ are included (not in other repos).
+
+**/*.tif
+**/*.tiff
+**/*.png
+**/*.jpg
+**/*.jpeg
+**/data/
+**/images/
+**/tmp/
+**/temp/
+**/__pycache__/
+**/.git/
+.git/
+# Secrets / tokens (never bake into image)
+**/*token*.txt
+# Exclude all .pth except ML_Production/models/
+**/*.pth
+!ML_Production/models/
+!ML_Production/models/*.pth
