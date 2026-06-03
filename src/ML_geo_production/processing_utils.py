@@ -40,6 +40,10 @@ def merge_worker(merge_queue, shared_target,target_shape, lock, verbose=False):
         if verbose:print("Merge marked task done")
 
 
+def _crs_missing(crs):
+    return crs is None or crs == "None" or crs == "none"
+
+
 def reproject_patch(patch_array, src_transform, src_crs, dst_transform, dst_crs, dst_shape,verbose=False):
     """
     Reprojects a complete image patch (all channels) into the destination coordinate system.
@@ -65,6 +69,13 @@ def reproject_patch(patch_array, src_transform, src_crs, dst_transform, dst_crs,
         Reprojected array
     """
     if verbose:print("Reproject_patch started")
+    if (
+        patch_array.shape == dst_shape
+        and src_transform == dst_transform
+        and (_crs_missing(src_crs) or _crs_missing(dst_crs))
+    ):
+        return patch_array.astype(np.float32).copy()
+
     # Create a temporary array to hold the reprojected data
     temp = np.zeros(dst_shape, dtype=np.float32)
     

@@ -82,6 +82,7 @@ def process_images_from_dict(parsed_json):
         stds=parsed_json.get("stds"),
         model_states=parsed_json.get("model_states"),
         only_use_these_models_index=parsed_json.get("only_use_these_models_index"),
+        crs=parsed_json.get("crs", "EPSG:25832"),
     )
 
 def process_images(image_paths, data_folders, channels, bounds, resolution=None, 
@@ -89,7 +90,7 @@ def process_images(image_paths, data_folders, channels, bounds, resolution=None,
                   patch_size=1000, overlap=40, batch_size=8, num_workers=4,
                   saved_models=[], model_names="", means=[[0.485, 0.456, 0.406]], stds=[[0.229, 0.224, 0.225]],
                   n_classes=3, pixel_buffer=0, debug=False, model_states=None, verify_images=False, 
-                  only_use_these_models_index=None):
+                  only_use_these_models_index=None, crs="EPSG:25832"):
     """
     Core function to process a list of images using an ensemble of models and create a combined output.
     The models are loaded and processed one by one to save GPU memory.
@@ -157,6 +158,15 @@ def process_images(image_paths, data_folders, channels, bounds, resolution=None,
         raise Exception("No images found to process.")
     with rasterio.open(image_paths[0]) as src:
         dst_crs = src.crs
+    if dst_crs is None and crs:
+        try:
+            dst_crs = rasterio.crs.CRS.from_string(crs)
+        except rasterio.errors.CRSError as exc:
+            print(
+                f"[WARNING] Could not parse CRS {crs!r} ({exc}); "
+                "continuing with dst_crs=None (reproject may use no-CRS copy path)"
+            )
+            dst_crs = None
 
     # Count how many times each pixel is covered by a geotiff
     # This geotiff_count_array is for the unbuffered area (bounds)
@@ -493,6 +503,8 @@ def run_inference_and_accumulate(dataloader, learner, device, model_mean, model_
                 width, height = meta["width"], meta["height"]
                 src_transform = meta["transform"]
                 src_crs = meta["crs"]
+                if src_crs is None or src_crs == "None":
+                    src_crs = dst_crs
                 temp_image_array = np.zeros((patch_probs.shape[0], height, width), dtype=np.float32)
                 # Count how many image patches overlap with a position within this specific image.
                 count_array_same_image = np.zeros((height, width), dtype=np.float32)
