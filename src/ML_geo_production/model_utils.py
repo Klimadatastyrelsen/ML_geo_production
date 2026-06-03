@@ -5,7 +5,11 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 from fastai.vision.all import *
-from ML_geo_production.image_utils import load_central_window, load_dummy_mask
+from ML_geo_production.image_utils import (
+    load_central_window,
+    load_dummy_mask,
+    load_multi_channel_central_window,
+)
 from wwf.vision.timm import *
 import time
 
@@ -257,6 +261,8 @@ def create_dummy_dls(
     sample_path=None,
     norm_means: Optional[Sequence[float]] = None,
     norm_stds: Optional[Sequence[float]] = None,
+    data_folders: Optional[Sequence[str]] = None,
+    channels: Optional[Sequence[Sequence[int]]] = None,
 ):
     """
     Creates a dummy DataLoaders from .tif images in the given folder.
@@ -279,8 +285,11 @@ def create_dummy_dls(
         If set, only this file is used for the dummy dataset (avoids picking another
         .tif in the folder that may have a different band count).
     norm_means, norm_stds : optional sequences
-        If norm_means is set and non-empty, n_in is len(norm_means), the first n_in raster
-        bands are loaded, and Normalize uses these stats (stds padded or truncated to match).
+        If norm_means is set and non-empty, n_in is len(norm_means). Used only to
+        determine input channel count for architecture setup.
+    data_folders, channels : optional
+        When both are set, load the dummy sample from multiple data folders (same
+        logic as inference). Otherwise read bands from a single GeoTIFF.
         
     Returns:
     --------
@@ -304,32 +313,31 @@ def create_dummy_dls(
         dl_source = folder
         get_items_fn = lambda f: list(Path(f).glob("*.tif"))
 
-    base_means = [0.485, 0.456, 0.406]
-    base_stds = [0.229, 0.224, 0.225]
     if norm_means is not None and len(norm_means) > 0:
-        means = [float(x) for x in norm_means]
-        n_in = len(means)
-        if norm_stds is not None and len(norm_stds) > 0:
-            stds = [float(x) for x in norm_stds]
-        else:
-            stds = [base_stds[i] if i < len(base_stds) else base_stds[-1] for i in range(n_in)]
-        if len(stds) < n_in:
-            pad = stds[-1] if stds else 0.229
-            stds = stds + [pad] * (n_in - len(stds))
-        elif len(stds) > n_in:
-            stds = stds[:n_in]
-    else:
-        means = [base_means[i] if i < len(base_means) else base_means[-1] for i in range(n_in)]
-        stds = [base_stds[i] if i < len(base_stds) else base_stds[-1] for i in range(n_in)]
+        n_in = len([float(x) for x in norm_means])
     print(f"Creating Datablock (dummy n_in={n_in})")
 
+    use_multi_channel = (
+        data_folders is not None
+        and channels is not None
+        and len(data_folders) > 0
+        and len(channels) > 0
+    )
+    if use_multi_channel:
+        get_x = lambda o: load_multi_channel_central_window(
+            o, data_folders, channels, window_size=1000
+        )
+        image_block = TransformBlock(batch_tfms=IntToFloatTensor)
+    else:
+        get_x = lambda o: load_central_window(o, window_size=1000, n_channels=n_in)
+        image_block = ImageBlock
+
     dblock = DataBlock(
-        blocks=(ImageBlock, MaskBlock(codes=list(range(n_classes)))),
+        blocks=(image_block, MaskBlock(codes=list(range(n_classes)))),
         get_items=get_items_fn,
         splitter=FuncSplitter(lambda o: False),  # All items go to training set.
-        get_x=lambda o: load_central_window(o, window_size=1000, n_channels=n_in),
+        get_x=get_x,
         get_y=lambda o: load_dummy_mask(o, window_size=1000),
-        batch_tfms=[Normalize.from_stats(means, stds)]
     )
 
     return dblock.dataloaders(dl_source, bs=bs, size=size)
@@ -345,6 +353,8 @@ def load_unet_from_state(
     sample_image_path=None,
     norm_means: Optional[Sequence[float]] = None,
     norm_stds: Optional[Sequence[float]] = None,
+    data_folders: Optional[Sequence[str]] = None,
+    channels: Optional[Sequence[Sequence[int]]] = None,
 ):
     """
     Loads a saved FastAI U-Net model from a pre-loaded state dictionary 
@@ -370,8 +380,9 @@ def load_unet_from_state(
         the first *.tif in input_folder is used (order not guaranteed).
     norm_means, norm_stds : optional
         When building the dummy dataloader (timm/resnet path), if norm_means is set then
-        n_in is len(norm_means), the first n_in bands are read from the sample GeoTIFF, and
-        Normalize uses these stats (see create_dummy_dls).
+        n_in is len(norm_means) (see create_dummy_dls).
+    data_folders, channels : optional
+        Multi-folder band selection for dummy sample loading (same as inference).
 
     Returns:
     --------
@@ -480,13 +491,15 @@ def load_unet_from_state(
             sample_path=sample_image_path,
             norm_means=norm_means,
             norm_stds=norm_stds,
+            data_folders=data_folders,
+            channels=channels,
         )
         print("Creating learner architecture")
         
         if model_name == "resnet34":
-            learn = unet_learner(dls, resnet34, n_out=n_classes, pretrained=False)
+            learn = unet_learner(dls, resnet34, n_out=n_classes, pretrained=False, n_in=eff_n_in)
         elif model_name == "resnet50":
-            learn = unet_learner(dls, resnet50, n_out=n_classes, pretrained=False)
+            learn = unet_learner(dls, resnet50, n_out=n_classes, pretrained=False, n_in=eff_n_in)
         else:
             learn = load_saved_timm_unet(dls, model_name, n_classes=n_classes, n_in=eff_n_in)
 

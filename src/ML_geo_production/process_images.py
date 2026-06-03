@@ -224,6 +224,8 @@ def process_images(image_paths, data_folders, channels, bounds, resolution=None,
             sample_image_path=image_paths[0] if image_paths else None,
             norm_means=means[idx],
             norm_stds=stds[idx],
+            data_folders=data_folders[idx],
+            channels=channels[idx],
         )
         learner.model.to(device)
         learner.model.eval()
