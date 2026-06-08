@@ -168,6 +168,28 @@ python src/ML_geo_production/evaluate_models.py \
 
 **Outputs:** For each (config, shape, feature): label `.tif`, stats `.md`, prediction `.tif` (`_pred_im.tif`), and difference `.tif` (`_label_pred_diff_im.tif`; 0=agree, 1=FP, 2=FN, 3=wrong class). The config must include a `geopackage` key for label creation.
 
+### evaluate_ensamble_in_list_of_images.py
+
+Evaluates a **complete ensemble** defined in a JSON config on a labeled benchmark image list. Computes global pixel accuracy (same metric as `ML_sdfi_fastai2/eval.py`): fraction of non-ignored label pixels predicted correctly, pooled across all images. Unlike `evaluate_models.py`, no shapefiles or geopackage are required — labels come from `path_to_labels` and the image list from `path_to_all_benchmarkset_txt`.
+
+**Arguments:**
+
+-   `--config` / `-c`: One or more JSON config paths; each ensemble is evaluated in order (stdout only).
+
+**JSON must include:** ensemble keys (`saved_models`, `model_names`, `means`, `stds`, `channels`, `data_types`, `n_classes`, `resolution`, `patch_size`, `overlap`, `batch_size`) plus `path_to_images`, `path_to_labels`, `path_to_all_benchmarkset_txt`. Optional: `ignore_index` (default `0`), `im_type` (default `.tif`), `pixel_buffer`, `only_use_these_models_index`.
+
+**Example:**
+
+``` bash
+python src/ML_geo_production/evaluate_ensamble_in_list_of_images.py \
+  --config config_files/evaluate_ensemble_example.json
+
+python src/ML_geo_production/evaluate_ensamble_in_list_of_images.py \
+  --config ensemble_a.json ensemble_b.json
+```
+
+**Output:** Prints global pixel accuracy per config to stdout (no files written).
+
 ### summarize_evaluations.py
 
 Reads evaluation `.md` files from a folder, extracts a chosen metric and inference time, and writes a summary markdown table (score, inference minutes, filename) plus model-index mapping.

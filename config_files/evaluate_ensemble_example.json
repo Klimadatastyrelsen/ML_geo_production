@@ -1,0 +1,44 @@
+{
+    "path_to_images": "../multi_channel_dataset_creation/example_dataset/data/splitted/rgb",
+    "path_to_labels": "../multi_channel_dataset_creation/example_dataset/labels/splitted_labels",
+    "path_to_all_benchmarkset_txt": "../multi_channel_dataset_creation/example_dataset/data/all.txt",
+    "im_type": ".tif",
+    "ignore_index": 0,
+    "saved_models": [
+        "./models/andringsudpegning_1km2benchmark_iter_52_24.pth",
+        "./models/andringsudpegning_1km2benchmark_iter_63_24.pth",
+        "./models/andringsudpegning_1km2benchmark_iter_62_24.pth"
+    ],
+    "model_names": [
+        "tf_efficientnetv2_l.in21k",
+        "efficientnetv2_rw_m.agc_in1k",
+        "resnet50"
+    ],
+    "n_classes": 3,
+    "means": [
+        [0.485, 0.456, 0.406],
+        [0.485, 0.456, 0.406],
+        [0.485, 0.456, 0.406]
+    ],
+    "stds": [
+        [0.229, 0.224, 0.225],
+        [0.229, 0.224, 0.225],
+        [0.229, 0.224, 0.225]
+    ],
+    "channels": [
+        [[0, 1, 2]],
+        [[0, 1, 2]],
+        [[0, 1, 2]]
+    ],
+    "data_types": [
+        ["rgb"],
+        ["rgb"],
+        ["rgb"]
+    ],
+    "resolution": 0.1,
+    "batch_size": 4,
+    "patch_size": 1000,
+    "overlap": 40,
+    "workers": 4,
+    "pixel_buffer": 0
+}
