@@ -7,6 +7,7 @@ geoalchemy2
 # Pin pyproj for compatibility with conda proj's proj.db (layout version 5). Newer pyproj expects proj.db layout >= 6.
 pyproj==3.6.1
 # For ML_sdfi_fastai2 branch SOTA_models_2026 (ConvNeXt V2 + UPerNet and other SOTA configs).
-transformers
+# Pin: transformers>=5.10 needs torch.float8_e8m0fnu (not in torch 2.6+cu124).
+transformers==5.2.0
 # Oracle thin client (no Instant Client) for geodanmark_bygninger_from_time_thin.py
 oracledb

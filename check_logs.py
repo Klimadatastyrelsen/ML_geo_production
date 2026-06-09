@@ -19,11 +19,28 @@ ERROR_PATTERNS = [
     re.compile(r"exit code:\s*[1-9]\d*", re.IGNORECASE),
 ]
 
+# GDAL/PROJ version mismatch warnings and accuracy metrics are not verify failures.
+BENIGN_LINE_PATTERNS = [
+    re.compile(r"ERROR 1: PROJ:"),
+    re.compile(r"CPLE_AppDefined in PROJ:"),
+    re.compile(r"\(Error Rate\):"),
+]
+
+
+def filter_benign_lines(text: str) -> str:
+    kept = []
+    for line in text.splitlines():
+        if any(p.search(line) for p in BENIGN_LINE_PATTERNS):
+            continue
+        kept.append(line)
+    return "\n".join(kept)
+
+
 def main():
     if not LOG_PATH.exists():
         print(f"Log file not found: {LOG_PATH}", file=sys.stderr)
         return 1
-    text = LOG_PATH.read_text()
+    text = filter_benign_lines(LOG_PATH.read_text())
     found = []
     for pat in ERROR_PATTERNS:
         for m in pat.finditer(text):
