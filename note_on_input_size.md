@@ -62,10 +62,22 @@ Per architecture:
 
 - **Swin / ConvNeXt + UPerNet: train at 992.** UPerNet's pyramid pooling module
   average-pools the whole feature map, so the model learns scene statistics at
-  the training size. Train at the size you infer at. Memory: ~3.75x per sample
-  compared with 512; use `batch_size` 1-2 and raise `n_acc` to keep the
-  effective batch (e.g. Swin: 4x20 becomes 1x80 or 2x40). LayerNorm does not
-  care about the physical batch size.
+  the training size. Train at the size you infer at.
+  **The backbones are LayerNorm, but the UPerNet decoder head contains 13
+  `BatchNorm2d` layers** (pyramid pooling and FPN fusion). Therefore:
+  - `batch_size = 1` does not run in train mode at all: the PPM pools to 1x1
+    and BatchNorm raises `Expected more than 1 value per channel`.
+  - `batch_size = 2` runs but the head's BN statistics come from 2 samples.
+  - Use a physical `batch_size` of at least 4, preferably 8, and set `n_acc`
+    to keep the effective batch (Swin was 4x20 = 80 at 512; use 8x10 or 4x20
+    at 992). Gradient accumulation does not help BN.
+  - If memory forces batch 2, freeze the head's BN running statistics
+    (`set_bn_eval` on the decode head / fastai `BnFreeze`).
+  Measured peak memory at 992, fp16, one training step (3-channel input;
+  extra input channels change only the first conv): Swin-small 8.7 GB at
+  batch 2, ConvNeXt-base 9.1 GB at batch 2; roughly 4.4 GB per additional
+  sample, so batch 4 ~18 GB and batch 8 ~35 GB. A 48 GB card that is not
+  shared handles batch 8.
 - **fastai UNet + EfficientNet: train at 512, infer at 992.** It has no global
   component, so once the input is a multiple of 32 the interior of a 992 patch
   is processed exactly as a 512 patch. Training at 992 would force
@@ -92,6 +104,16 @@ Per architecture:
 - Use the same `patch_size` for all models in one comparison, and the same size
   the models were trained at (992 for UPerNet models; 992 is also correct for a
   512-trained EfficientNet UNet).
+- Inference memory is small. Measured peak at 992 (11 classes):
+
+  | model | fp32, batch 1 | fp16, batch 1 | fp16, batch 2 |
+  |---|---|---|---|
+  | swin-small-upernet | 1.5 GB | 1.8 GB | 3.3 GB |
+  | convnext-base-upernet | 1.6 GB | 2.0 GB | 3.5 GB |
+  | convnext-tiny-upernet | 1.4 GB | 1.6 GB | 3.1 GB |
+
+  About 1.5 GB per extra patch, so `batch_size: 8` is ~12 GB. A 20 GB
+  inference GPU is fine at 992 for all of these.
 
 ## Production on large orthophotos (`ML_geo_production`, production `.json`)
 
@@ -115,6 +137,8 @@ Per architecture:
 1. Is it a multiple of 32?
 2. Does it fit inside the smallest image the tiler will see?
 3. Do training crop and inference patch match for UPerNet (global pooling) models?
-4. For BatchNorm models, is the physical `batch_size` still at least ~8?
+4. Is the physical `batch_size` at least 4, preferably 8? This applies to
+   EfficientNet/ResNet UNets **and** to UPerNet models (BatchNorm in the
+   decoder head). `batch_size = 1` fails for UPerNet in train mode.
 5. Are all models in a comparison evaluated at the same `patch_size`?
 6. Remember that a 512 centre-crop validation number is not a full-tile number.
