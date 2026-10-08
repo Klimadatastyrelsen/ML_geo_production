@@ -9,14 +9,14 @@ from typing import List, Dict, Union
 FILE_MAP: Dict[str, Union[str, List[str]]] = {
     # Single files
     "andringsudpegning_1km2benchmark_iter_52_24.pth":
-        "https://github.com/SDFIdk/ML_geo_production/releases/download/v1.0.0/andringsudpegning_1km2benchmark_iter_52_24.pth",
+        "https://github.com/Klimadatastyrelsen/ML_geo_production/releases/download/v1.0.0/andringsudpegning_1km2benchmark_iter_52_24.pth",
     "andringsudpegning_1km2benchmark_iter_63_24.pth":
-        "https://github.com/SDFIdk/ML_geo_production/releases/download/v1.0.0/andringsudpegning_1km2benchmark_iter_63_24.pth",
+        "https://github.com/Klimadatastyrelsen/ML_geo_production/releases/download/v1.0.0/andringsudpegning_1km2benchmark_iter_63_24.pth",
 
     # Concatenated file: The parts are listed in order
     "andringsudpegning_1km2benchmark_iter_62_24.pth": [
-        "https://github.com/SDFIdk/ML_geo_production/releases/download/v1.0.0/andringsudpegning_1km2benchmark_iter_62_24.pth.partaa",
-        "https://github.com/SDFIdk/ML_geo_production/releases/download/v1.0.0/andringsudpegning_1km2benchmark_iter_62_24.pth.partab",
+        "https://github.com/Klimadatastyrelsen/ML_geo_production/releases/download/v1.0.0/andringsudpegning_1km2benchmark_iter_62_24.pth.partaa",
+        "https://github.com/Klimadatastyrelsen/ML_geo_production/releases/download/v1.0.0/andringsudpegning_1km2benchmark_iter_62_24.pth.partab",
     ]
 }
 
