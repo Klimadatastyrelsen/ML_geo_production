@@ -22,7 +22,7 @@ For questions about the repo, email rajoh@kds.dk
     AOI\
 -   Optional comparison against reference polygons for change
     detection\
--   Example configs work with [https://github.com/SDFIdk/multi_channel_dataset_creation]dataset and pretrained models
+-   Example configs work with [https://github.com/Klimadatastyrelsen/multi_channel_dataset_creation]dataset and pretrained models
 
 ------------------------------------------------------------------------
 
@@ -80,7 +80,7 @@ Clone the dataset repository so it sits next to this repository in the
 same parent directory:
 
 ``` bash
-git clone https://github.com/SDFIdk/multi_channel_dataset_creation
+git clone https://github.com/Klimadatastyrelsen/multi_channel_dataset_creation
 ```
 
 The example config files in `config_files/` work **out of the box** with
@@ -218,7 +218,7 @@ python src/ML_geo_production/summarize_evaluations.py \
 
 See examples in `config_files/` --- these are ready to run using the
 dataset from\
-https://github.com/SDFIdk/multi_channel_dataset_creation
+https://github.com/Klimadatastyrelsen/multi_channel_dataset_creation
 
 ------------------------------------------------------------------------
 

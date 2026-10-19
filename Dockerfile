@@ -24,6 +24,10 @@ COPY ML_geo_production /workspace/repos/ML_geo_production
 COPY multi_channel_dataset_creation /workspace/repos/multi_channel_dataset_creation
 COPY ML_sdfi_fastai2 /workspace/repos/ML_sdfi_fastai2
 
+# Fail fast if build context did not include model weights (download before docker build)
+RUN test -n "$(ls -1 /workspace/repos/ML_Production/models/*.pth 2>/dev/null)" || \
+    (echo "ERROR: no .pth in ML_Production/models — download before docker build" && exit 1)
+
 # Create conda env and install (same steps as README, from ML_Production root)
 RUN cd /workspace/repos/ML_Production && \
     mamba env create -f environment.yml && \
@@ -38,6 +42,10 @@ RUN cd /workspace/repos/ML_Production && \
       gdal_ver=$(gdal-config --version) && \
       pip install --force-reinstall --no-cache-dir gdal==${gdal_ver}.* && \
       mamba install -y -c conda-forge --force-reinstall libtiff libjpeg-turbo libdeflate'
+
+# Interactive shells must use ML_sdfi (mambaforge auto-activates base in bash otherwise)
+RUN conda config --set auto_activate_base false && \
+    echo 'conda activate ML_sdfi' >> /root/.bashrc
 
 # Shared models symlink (same as previous ML_Production Docker layout)
 RUN rm -rf /workspace/repos/ML_geo_production/models && \
