@@ -67,20 +67,18 @@ def main():
     log_section(LOG_PATH, f"=== models directory: {models_dir} ===")
 
     token_file = repo_root / "my_hugging_face_token.txt"
-    if token_file.exists():
-        log_section(LOG_PATH, "=== download_upload_models_hf.py (download) ===")
-        ret = stream_run(
-            f"{sys.executable} src/ML_geo_production/download_upload_models_hf.py --download --token_file {token_file} --file_path {models_dir}/",
-            LOG_PATH,
-            cwd=repo_root,
-            env=env_geotiff,
-            timeout=TIMEOUT_DEFAULT,
-        )
-        log_message(LOG_PATH, f"Exit code: {ret}")
-        if ret != 0:
-            return ret
-    else:
-        log_section(LOG_PATH, "=== Skipping model download (my_hugging_face_token.txt not found) ===")
+    token_arg = f"--token_file {token_file} " if token_file.exists() else ""
+    log_section(LOG_PATH, "=== download_upload_models_hf.py (download) ===")
+    ret = stream_run(
+        f"{sys.executable} src/ML_geo_production/download_upload_models_hf.py --download {token_arg}--file_path {models_dir}/",
+        LOG_PATH,
+        cwd=repo_root,
+        env=env_geotiff,
+        timeout=TIMEOUT_DEFAULT,
+    )
+    log_message(LOG_PATH, f"Exit code: {ret}")
+    if ret != 0:
+        return ret
 
     log_section(LOG_PATH, "=== process_images.py (save_probs_preds_and_change_detection.json) ===")
     ret = stream_run(

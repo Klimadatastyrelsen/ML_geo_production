@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 from huggingface_hub import HfApi, hf_hub_download
+from huggingface_hub.errors import HfHubHTTPError
 
 
 def resolve_token(token_file: Path | None) -> str:
@@ -73,10 +74,26 @@ def ensure_dest_dir(dest: Path) -> Path:
     return dest
 
 
+def list_files_for_download(api: HfApi, repo_id: str) -> tuple[HfApi, list[str]]:
+    """List repo files; if the token is rejected, retry anonymously (public repos)."""
+    try:
+        return api, api.list_repo_files(repo_id=repo_id, repo_type="model")
+    except HfHubHTTPError as e:
+        status = getattr(e.response, "status_code", None)
+        if not api.token or status != 401:
+            raise
+        print(
+            "Warning: Hugging Face token was rejected (401, e.g. expired); retrying download anonymously",
+            file=sys.stderr,
+        )
+        anonymous = HfApi(token=False)
+        return anonymous, anonymous.list_repo_files(repo_id=repo_id, repo_type="model")
+
+
 def download(api: HfApi, dest_dir: str, repo_id: str, dry_run: bool):
     dest = ensure_dest_dir(Path(dest_dir))
 
-    all_files = api.list_repo_files(repo_id=repo_id, repo_type="model")
+    api, all_files = list_files_for_download(api, repo_id)
     pth_files = sorted(f for f in all_files if f.endswith(".pth"))
     if not pth_files:
         print(f"No .pth files found in repo {repo_id}")
@@ -118,12 +135,18 @@ def main():
     parser.add_argument("--file_path", required=True, nargs="+",
                         help="Upload: path(s) or glob pattern for .pth files. Download: destination directory.")
     parser.add_argument("--repo_id", default="rasmuspjohansson/KDS_buildings", help="Hugging Face repo id")
-    parser.add_argument("--token_file", type=Path, default=None, help="Path to HF token file")
+    parser.add_argument("--token_file", type=Path, default=None,
+                        help="Path to HF token file (required for upload; optional for download of public repos)")
     parser.add_argument("--dry_run", action="store_true", help="Print actions without executing")
 
     args = parser.parse_args()
 
-    token = None if args.dry_run else resolve_token(args.token_file)
+    if args.dry_run:
+        token = None
+    elif args.download and args.token_file is None:
+        token = False
+    else:
+        token = resolve_token(args.token_file)
     api = HfApi(token=token)
 
     if args.upload:

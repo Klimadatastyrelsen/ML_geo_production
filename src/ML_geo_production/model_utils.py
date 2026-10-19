@@ -111,7 +111,7 @@ class ConvNeXtV2UPerNetWrapper(nn.Module):
         self.n_in = n_in
         
         # Map backbone names to HuggingFace model IDs
-        arch = backbone_name.replace("convnextv2_", "").replace("convnext_", "")
+        arch = backbone_name
         model_map = {
             "tiny": "openmmlab/upernet-convnext-tiny",
             "small": "openmmlab/upernet-convnext-small", 
@@ -459,6 +459,12 @@ def load_unet_from_state(
         
         # Extract the backbone name (e.g., "convnextv2_base" from "convnextv2_base_upernet")
         backbone_name = model_name_lower.replace("_upernet", "")
+        # convnext1_tiny -> tiny (v1). Strip the longer prefixes before "convnext_".
+        backbone_name = (
+            backbone_name.replace("convnextv2_", "")
+            .replace("convnext1_", "")
+            .replace("convnext_", "")
+        )
         
         model = ConvNeXtV2UPerNetWrapper(
             backbone_name=backbone_name,
@@ -501,7 +507,11 @@ def load_unet_from_state(
         elif model_name == "resnet50":
             learn = unet_learner(dls, resnet50, n_out=n_classes, pretrained=False, n_in=eff_n_in)
         else:
-            learn = load_saved_timm_unet(dls, model_name, n_classes=n_classes, n_in=eff_n_in)
+            # These checkpoints were trained with bottleneck unset (None). "conv" adds
+            # decoder.bottleneck weights the saved state dict does not contain.
+            learn = load_saved_timm_unet(
+                dls, model_name, bottleneck=None, n_classes=n_classes, n_in=eff_n_in
+            )
 
         # 2. Load Weights (The Fast Step)
         print("Loading state dictionary into model")
