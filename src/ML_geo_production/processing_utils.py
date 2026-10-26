@@ -1,7 +1,12 @@
 # processing_utils.py
+import math
 import numpy as np
 import rasterio
-from rasterio.warp import reproject, Resampling
+from rasterio.transform import array_bounds
+from rasterio.warp import reproject, transform_bounds, Resampling
+from rasterio.windows import Window
+from rasterio.windows import from_bounds as window_from_bounds
+from rasterio.windows import transform as window_transform
 from pathlib import Path
 import time
 
@@ -30,11 +35,16 @@ def merge_worker(merge_queue, shared_target,target_shape, lock, verbose=False):
         if item is None:
             if verbose:print("Merge data is None, exiting")
             break  # Exit signal
-            
+
+        # reproject_patch only returns the part of the target grid that the source image
+        # covers, so the array is added at its offset instead of over the whole target
+        row_off, col_off, array = item
+        height, width = array.shape[1], array.shape[2]
+
         # Acquire lock to update the shared target array safely
         if verbose:print("Merge worker is acquiring lock")
         with lock:
-            target_np += item
+            target_np[:, row_off:row_off + height, col_off:col_off + width] += array
         if verbose:print("Merge worker is ready for new iteration")
         merge_queue.task_done()
         if verbose:print("Merge marked task done")
@@ -61,12 +71,15 @@ def reproject_patch(patch_array, src_transform, src_crs, dst_transform, dst_crs,
     dst_crs : CRS
         Destination coordinate reference system
     dst_shape : tuple
-        Shape of the destination array
-        
+        Shape of the full destination grid, (channels, height, width)
+
     Returns:
     --------
-    numpy.ndarray
-        Reprojected array
+    tuple
+        (row_off, col_off, array) where array only covers the part of the destination
+        grid that the source actually reaches. Returning the full destination grid
+        instead means pickling channels * height * width * 4 bytes back to the caller
+        for every source image, which is gigabytes per image for a 0.1 m tile.
     """
     if verbose:print("Reproject_patch started")
     if (
@@ -74,23 +87,49 @@ def reproject_patch(patch_array, src_transform, src_crs, dst_transform, dst_crs,
         and src_transform == dst_transform
         and (_crs_missing(src_crs) or _crs_missing(dst_crs))
     ):
-        return patch_array.astype(np.float32).copy()
+        return 0, 0, patch_array.astype(np.float32).copy()
+
+    n_channels, dst_height, dst_width = dst_shape
+    row_off, col_off, height, width = _destination_window(
+        patch_array.shape, src_transform, src_crs, dst_transform, dst_crs, dst_height, dst_width
+    )
 
     # Create a temporary array to hold the reprojected data
-    temp = np.zeros(dst_shape, dtype=np.float32)
-    
+    temp = np.zeros((n_channels, height, width), dtype=np.float32)
+    if height == 0 or width == 0:
+        # the source falls outside the destination grid; reproject cannot take an empty
+        # destination, and adding an empty array at the offset is a no-op anyway
+        if verbose:print("Reproject_patch: source does not reach the destination grid")
+        return row_off, col_off, temp
+    window_dst_transform = window_transform(Window(col_off, row_off, width, height), dst_transform)
+
     for i in range(patch_array.shape[0]):
         reproject(
             source=patch_array[i],
             destination=temp[i],
             src_transform=src_transform,
             src_crs=src_crs,
-            dst_transform=dst_transform,
+            dst_transform=window_dst_transform,
             dst_crs=dst_crs,
             resampling=Resampling.nearest
         )
     if verbose:print("Reproject_patch ENDED")
-    return temp
+    return row_off, col_off, temp
+
+
+def _destination_window(src_shape, src_transform, src_crs, dst_transform, dst_crs, dst_height, dst_width):
+    """The (row_off, col_off, height, width) of the destination grid the source covers."""
+    bounds = array_bounds(src_shape[1], src_shape[2], src_transform)
+    if not _crs_missing(src_crs) and not _crs_missing(dst_crs) and str(src_crs) != str(dst_crs):
+        bounds = transform_bounds(src_crs, dst_crs, *bounds)
+
+    window = window_from_bounds(*bounds, transform=dst_transform)
+    # one pixel of slack on each side so nearest resampling cannot fall just outside
+    col_off = min(max(math.floor(window.col_off) - 1, 0), dst_width)
+    row_off = min(max(math.floor(window.row_off) - 1, 0), dst_height)
+    col_end = min(max(math.ceil(window.col_off + window.width) + 1, col_off), dst_width)
+    row_end = min(max(math.ceil(window.row_off + window.height) + 1, row_off), dst_height)
+    return row_off, col_off, row_end - row_off, col_end - col_off
 
 def save_probabilities_data(data_array: np.ndarray, transform, crs, filename: str, output_dtype=np.float32):
     """

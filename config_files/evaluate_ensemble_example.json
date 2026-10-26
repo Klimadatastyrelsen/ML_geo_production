@@ -37,7 +37,7 @@
     ],
     "resolution": 0.1,
     "batch_size": 4,
-    "patch_size": 1000,
+    "patch_size": 992,
     "overlap": 40,
     "workers": 4,
     "pixel_buffer": 0

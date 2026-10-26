@@ -200,6 +200,9 @@ def get_dataloader(image_paths, data_folders, channels, label_paths=None, batch_
                    shape_bounds=None, pixel_buffer=0, prefetch_factor=2):
     dataset = LargeImageDataset(image_paths, data_folders, channels, label_paths, patch_size=patch_size, overlap=overlap,
                                shape_bounds=shape_bounds, pixel_buffer=pixel_buffer)
+    # torch rejects prefetch_factor when num_workers is 0, so num_workers=0 (everything in the
+    # main process, useful when the workers hang on slow network storage) needs it left out
+    extra_kwargs = {"prefetch_factor": prefetch_factor} if num_workers > 0 else {}
     return DataLoader(
         dataset, 
         batch_size=batch_size, 
@@ -207,8 +210,8 @@ def get_dataloader(image_paths, data_folders, channels, label_paths=None, batch_
         num_workers=num_workers, 
         pin_memory=True,
         collate_fn=custom_collate_fn,
-        prefetch_factor=prefetch_factor,
-        persistent_workers=False  # Keeps workers alive across epochs/inference loops. Keeping it at true casue 'to many open files' error
+        persistent_workers=False,  # Keeps workers alive across epochs/inference loops. Keeping it at true casue 'to many open files' error
+        **extra_kwargs
     )
 if __name__ == "__main__":
     import argparse
