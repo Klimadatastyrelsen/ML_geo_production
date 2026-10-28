@@ -1,0 +1,35 @@
+---
+description: "Standards for this project"
+alwaysApply: true
+---
+
+# Project rules
+
+Stack: 
+- Language: Python 
+- Package manager: mamba 
+
+Important files: 
+- 'README.md' - describe the process 
+
+How to work: 
+- Act as a careful, pragmatic data scientist. Prefer clear, correct, reproducible solutions over clever or large rewrites.
+- Explain what you do 
+- Make the smallest useful change.
+- For non-trivial changes, give a brief plan, make minimal reviewable edits, and avoid unrelated refactoring.
+- Follow existing naming, folder and component patterns. 
+- Don not rewrtie unrelated code while fixing a narrow issue. 
+- Do not hard-code tokens, passwords, private URLs, or local-only paths unless the project docs require them.
+- Failures should print a clear error and exit non-zero.
+- Avoid broad `except Exception` blocks unless the error is logged or re-raised with useful context.
+- Do not push to main branch, only to branch "vectorize" 
+
+Before reporting success: 
+- Summarize changed files and any remaining risks. 
+
+Do not edit:
+- `.env`, `.env.local`, or other secret files
+- private keys, tokens, credentials, or OAuth files
+- unrelated files outside the requested scope
+
+If a requested change appears to require one of these files, stop and explain why before editing.
