@@ -1,4 +1,3 @@
-
 import os
 from qgis.core import (
     QgsProject,
@@ -6,8 +5,10 @@ from qgis.core import (
     QgsRasterShader,
     QgsColorRampShader,
     QgsSingleBandPseudoColorRenderer,
+    QgsPalettedRasterRenderer,
     QgsStyle
 )
+from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QFileDialog
 
 # Settings
@@ -22,7 +23,7 @@ style = QgsStyle.defaultStyle()
 # Select input rasters
 files, _ = QFileDialog.getOpenFileNames(
     iface.mainWindow(),
-    "Select probability rasters",
+    "Select probability or prediction rasters",
     "",
     "GeoTIFF (*.tif *.tiff)"
 )
@@ -57,37 +58,77 @@ def style_probability(layer, band):
     layer.triggerRepaint()
 
 
-# Load rasters and create separate layers for each channel
+# 0 = black, 1 = white
+def style_prediction(layer, band=1):
+
+    classes = [
+        #QgsPalettedRasterRenderer.Class(1, QColor(0, 0, 0), "0"),
+        QgsPalettedRasterRenderer.Class(2, QColor(255, 255, 0), "1"),
+    ]
+    renderer = QgsPalettedRasterRenderer(layer.dataProvider(), band, classes)
+
+    layer.setRenderer(renderer)
+    layer.triggerRepaint()
+
+
+def raster_kind(path):
+    stem = os.path.splitext(os.path.basename(path))[0]
+    if stem.endswith("_probs"):
+        return "probs"
+    if stem.endswith("_preds"):
+        return "preds"
+    return None
+
+
+# Load rasters and style them from the file name
 for path in files:
-    
+
     # name = os.path.splitext(os.path.basename(path))[0]
     name = os.path.join(os.path.basename(os.path.dirname(path)), os.path.basename(path))
-    check = QgsRasterLayer(path, name, "gdal")
+    kind = raster_kind(path)
 
-    if not check.isValid() or check.bandCount() < 2:
-        print(f"Skipped {name}: invalid raster or fewer than 2 bands")
-        continue
+    if kind == "probs":
+        check = QgsRasterLayer(path, name, "gdal")
 
-    group = root.addGroup(name)
+        if not check.isValid() or check.bandCount() < 2:
+            print(f"Skipped {name}: invalid raster or fewer than 2 bands")
+            continue
 
-    class_settings = [
-        (2, "Background - Probability"),
-        (3, "Building - Probability")
-    ]
+        group = root.addGroup(name)
 
-    for band, label in class_settings:
+        class_settings = [
+            (2, "Background - Probability"),
+            (3, "Building - Probability")
+        ]
 
-        layer = QgsRasterLayer(path, label, "gdal")
-        style_probability(layer, band)
+        for band, label in class_settings:
 
+            layer = QgsRasterLayer(path, label, "gdal")
+            style_probability(layer, band)
+
+            project.addMapLayer(layer, False)
+            node = group.addLayer(layer)
+
+            # Show Band 1 by default
+            node.setItemVisibilityChecked(band == 1)
+
+        print(f"Added: {name}")
+
+    elif kind == "preds":
+        layer = QgsRasterLayer(path, name, "gdal")
+
+        if not layer.isValid() or layer.bandCount() < 1:
+            print(f"Skipped {name}: invalid prediction raster")
+            continue
+
+        style_prediction(layer, 1)
         project.addMapLayer(layer, False)
-        node = group.addLayer(layer)
+        root.addLayer(layer)
+        print(f"Added: {name}")
 
-        # Show Band 1 by default
-        node.setItemVisibilityChecked(band == 1)
-
-    print(f"Added: {name}")
+    else:
+        print(f"Skipped {name}: file name must end with _probs or _pred")
 
 # Refresh map
 iface.mapCanvas().refresh()
-print("Finished loading probability rasters.")
+print("Finished loading rasters.")
