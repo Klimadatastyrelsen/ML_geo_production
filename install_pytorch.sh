@@ -2,24 +2,28 @@
 # install_pytorch.sh — install the pinned PyTorch CUDA build for the ML_sdfi environment.
 # Run after: conda activate ML_sdfi
 #
-# One stable cu128 build covers Turing (sm_75, e.g. Quadro RTX 8000) through
-# Blackwell (sm_120, e.g. RTX PRO 6000 / RTX 50xx), so old and new GPUs share
-# the same torch version.
+# The same torch version comes in two CUDA builds, and no single build covers
+# every GPU we use:
+#   cu126  sm_50..sm_90   Volta (V100) through Hopper; A100, Quadro RTX 8000
+#   cu128  sm_75..sm_120  Turing through Blackwell (RTX PRO 6000 / RTX 50xx)
+# Without PYTORCH_CUDA the variant follows the GPUs: cu128 when any GPU is
+# compute capability 12.0 or newer, otherwise cu126.
 #
 # Overrides:
-#   PYTORCH_CUDA=cu126              other PyTorch wheel index (same pinned versions)
+#   PYTORCH_CUDA=cu126|cu128        force a wheel index (same pinned versions)
 #   TORCH_VERSION / TORCHVISION_VERSION / TORCHAUDIO_VERSION
-#   INSTALL_PYTORCH_NO_GPU=1        skip GPU detection and CUDA smoke test (Docker build)
+#   INSTALL_PYTORCH_NO_GPU=1        skip GPU detection and CUDA smoke test (Docker build;
+#                                   variant defaults to cu126)
 
 set -euo pipefail
 
 TORCH_VERSION="${TORCH_VERSION:-2.11.0}"
 TORCHVISION_VERSION="${TORCHVISION_VERSION:-0.26.0}"
 TORCHAUDIO_VERSION="${TORCHAUDIO_VERSION:-2.11.0}"
-VARIANT="${PYTORCH_CUDA:-cu128}"
+VARIANT="${PYTORCH_CUDA:-}"
 
-# Lowest compute capability with kernels in the pinned cu128 wheels.
-MIN_COMPUTE_CAP="7.5"
+# Lowest compute capability with kernels in the pinned wheels of each variant.
+declare -A MIN_COMPUTE_CAP_FOR=([cu126]="5.0" [cu128]="7.5")
 # CUDA 12.x minimum driver; below the recommended one, cu128 may still work via minor-version compatibility.
 MIN_DRIVER="525.60"
 RECOMMENDED_DRIVER="570.0"
@@ -28,20 +32,37 @@ version_lt() {
   [[ "$1" != "$2" && "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -1)" == "$1" ]]
 }
 
-check_gpus() {
+require_nvidia_smi() {
   if ! command -v nvidia-smi >/dev/null 2>&1; then
     echo "ERROR: nvidia-smi not found; CUDA GPU required for ML_sdfi environment" >&2
     exit 1
   fi
+}
 
-  local name cap driver
+select_variant() {
+  local cap
+  while read -r cap; do
+    if ! version_lt "$(echo "${cap}" | tr -d ' ')" "12.0"; then
+      echo "cu128"
+      return
+    fi
+  done < <(nvidia-smi --query-gpu=compute_cap --format=csv,noheader)
+  echo "cu126"
+}
+
+check_gpus() {
+  local name cap driver min_cap="${MIN_COMPUTE_CAP_FOR[${VARIANT}]:-0}"
   while IFS=',' read -r name cap driver; do
     name="$(echo "${name}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
     cap="$(echo "${cap}" | tr -d ' ')"
     driver="$(echo "${driver}" | tr -d ' ')"
     echo "PYTORCH_INSTALL: gpu=\"${name}\" compute_cap=${cap} driver=${driver}"
-    if version_lt "${cap}" "${MIN_COMPUTE_CAP}"; then
-      echo "ERROR: ${name} has compute capability ${cap}; torch ${TORCH_VERSION}+${VARIANT} needs >= ${MIN_COMPUTE_CAP}" >&2
+    if version_lt "${cap}" "${min_cap}"; then
+      echo "ERROR: ${name} has compute capability ${cap}; torch ${TORCH_VERSION}+${VARIANT} needs >= ${min_cap}" >&2
+      exit 1
+    fi
+    if [[ "${VARIANT}" == "cu126" ]] && ! version_lt "${cap}" "12.0"; then
+      echo "ERROR: ${name} has compute capability ${cap}; ${VARIANT} has no kernels for it, use PYTORCH_CUDA=cu128" >&2
       exit 1
     fi
     if version_lt "${driver}" "${MIN_DRIVER}"; then
@@ -63,11 +84,14 @@ PY
 
 main() {
   local expected current force=()
-  expected="${TORCH_VERSION}+${VARIANT}"
 
   if [[ "${INSTALL_PYTORCH_NO_GPU:-}" != "1" ]]; then
+    require_nvidia_smi
+    VARIANT="${VARIANT:-$(select_variant)}"
     check_gpus
   fi
+  VARIANT="${VARIANT:-cu126}"
+  expected="${TORCH_VERSION}+${VARIANT}"
 
   current="$(installed_torch)"
   echo "PYTORCH_INSTALL: selected=${expected} current=${current}"
