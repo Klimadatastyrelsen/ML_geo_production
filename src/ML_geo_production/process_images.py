@@ -426,6 +426,25 @@ def prepare_dataloader(image_paths, data_folders, channels, label_paths, batch_s
     return dataloader
 
 
+def patch_window_per_image(dataset):
+    """For every image index, the (col_off, row_off, width, height) covering all of its patches."""
+    windows = {}
+    for img_idx, x, y in dataset.patches:
+        col_off, row_off, col_end, row_end = windows.get(
+            img_idx, (x, y, x + dataset.patch_size, y + dataset.patch_size)
+        )
+        windows[img_idx] = (
+            min(col_off, x),
+            min(row_off, y),
+            max(col_end, x + dataset.patch_size),
+            max(row_end, y + dataset.patch_size),
+        )
+    return {
+        img_idx: (col_off, row_off, col_end - col_off, row_end - row_off)
+        for img_idx, (col_off, row_off, col_end, row_end) in windows.items()
+    }
+
+
 def run_inference_and_accumulate(dataloader, learner, device, model_mean, model_std, dst_transform, dst_crs,
                              merge_queue, target_width, target_height, verbose=False):
     """
@@ -441,11 +460,17 @@ def run_inference_and_accumulate(dataloader, learner, device, model_mean, model_
     # Create one iterator for the single dataloader.
     dataloader_iterator = iter(dataloader)
 
+    # The dataset only emits patches that overlap the requested bounds plus the buffer, so the
+    # accumulator only has to cover those patches. Sizing it to the whole source image instead
+    # costs n_classes * width * height * 4 bytes per image, which is 10 GB for a large oblique.
+    patch_windows = patch_window_per_image(dataloader.dataset)
+
     # Variables to keep track of the current image and its accumulator.
     current_img_idx = None
     temp_image_array = None # Accumulates probabilities for patches within the current image
     count_array_same_image = None # Counts how many patches cover a pixel within the current image
     src_transform, src_crs = None, None
+    x_offset, y_offset = 0, 0 # position of the accumulator inside the source image
 
     def submit_current_image():
         """
@@ -502,20 +527,23 @@ def run_inference_and_accumulate(dataloader, learner, device, model_mean, model_
                     submit_current_image()
                 current_img_idx = img_idx
                 meta = dataloader.dataset.image_metadata[current_img_idx]
-                width, height = meta["width"], meta["height"]
-                src_transform = meta["transform"]
+                x_offset, y_offset, window_width, window_height = patch_windows[current_img_idx]
+                src_transform = rasterio.windows.transform(
+                    Window(x_offset, y_offset, window_width, window_height), meta["transform"]
+                )
                 src_crs = meta["crs"]
                 if src_crs is None or src_crs == "None":
                     src_crs = dst_crs
-                temp_image_array = np.zeros((patch_probs.shape[0], height, width), dtype=np.float32)
+                temp_image_array = np.zeros((patch_probs.shape[0], window_height, window_width), dtype=np.float32)
                 # Count how many image patches overlap with a position within this specific image.
-                count_array_same_image = np.zeros((height, width), dtype=np.float32)
+                count_array_same_image = np.zeros((window_height, window_width), dtype=np.float32)
 
             # Accumulate the patch probabilities into the proper location.
             patch_h, patch_w = patch_probs.shape[1], patch_probs.shape[2]
-            temp_image_array[:, y:y+patch_h, x:x+patch_w] += patch_probs
+            row, col = y - y_offset, x - x_offset
+            temp_image_array[:, row:row+patch_h, col:col+patch_w] += patch_probs
             # Keep track of how many patches have been contributing
-            count_array_same_image[y:y+patch_h, x:x+patch_w] += 1
+            count_array_same_image[row:row+patch_h, col:col+patch_w] += 1
 
     # Submit the final image for this model, if any patches were processed.
     if temp_image_array is not None:

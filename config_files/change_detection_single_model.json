@@ -64,7 +64,7 @@
     ],
     "resolution": 0.1,
     "batch_size": 8,
-    "patch_size": 1000,
+    "patch_size": 992,
     "workers": 4,
     "model_names": ["efficientnetv2_rw_m.agc_in1k"],
     "path_to_codes": "/mnt/T/mnt/trainingdata/bygningsudpegning/1km2data_for_benchmarking/codes.txt",

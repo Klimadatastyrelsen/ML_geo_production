@@ -87,7 +87,7 @@
     ],
     "resolution": 0.1,
     "batch_size": 8,
-    "patch_size": 1000,
+    "patch_size": 992,
     "workers": 4,
     "model_names": [
         "tf_efficientnetv2_l.in21k",
