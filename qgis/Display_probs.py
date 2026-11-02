@@ -73,9 +73,9 @@ def style_prediction(layer, band=1):
 
 def raster_kind(path):
     stem = os.path.splitext(os.path.basename(path))[0]
-    if stem.endswith("_probs"):
+    if stem.endswith("_probs") or stem.endswith("probs"):
         return "probs"
-    if stem.endswith("_preds"):
+    if stem.endswith("_preds") or stem.endswith("preds"):
         return "preds"
     return None
 
