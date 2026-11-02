@@ -15,6 +15,7 @@
     "stop_after_tile": null,
     "geopackage": "../multi_channel_dataset_creation/example_dataset/labels/example_dataset_buildings_missing_building.gpkg",
     "unknown_boarder_size": 1.5,
+    "buffer_in_buffer_out_size": 1.5,
     "change_detection_threshold": 0.01,
     "create_new_mapping": false,
     "path_to_mapping": null,

@@ -29,9 +29,10 @@ def apply_thresholding(probs_array, diff_array, threshold):
 def create_diff_polygons(probs, geopackage_data, transform, crs, bounds,
                          *,
                          change_detection_threshold,
+                         unknown_boarder_size,
+                         buffer_in_buffer_out_size,
                          path_to_mapping="/mnt/T/mnt/trainingdata/bygningsudpegning/iter_4/roof_no_roof_mapping.txt",
                          create_new_mapping=False,
-                         unknown_boarder_size=1.5,
                          extra_atributes=None,
                          save_original_polygons=False,
                          save_buffer_in_polygons=False,
@@ -56,6 +57,11 @@ def create_diff_polygons(probs, geopackage_data, transform, crs, bounds,
         Probability-channel threshold used by apply_thresholding to
         decide which pixels count as a real change. Must be supplied by the
         caller (normally via the run's JSON config)
+    unknown_boarder_size : float
+        Width in ground units of the ignore border written into the label raster.
+    buffer_in_buffer_out_size : float
+        Shrink-then-grow distance in ground units used when polygonizing the diff.
+        Independent of unknown_boarder_size. 0 means no buffer.
     """
 
     if extra_atributes is None:
@@ -91,12 +97,16 @@ def create_diff_polygons(probs, geopackage_data, transform, crs, bounds,
     print(f"[CD] apply_thresholding threshold={change_detection_threshold}")
     diff_array = apply_thresholding(probs, diff_array, threshold=change_detection_threshold)
 
+    print(
+        f"[CD] unknown_boarder_size={unknown_boarder_size} "
+        f"buffer_in_buffer_out_size={buffer_in_buffer_out_size}"
+    )
     # Polygonize
     diff_gdf = polygonize.polygonize_raster_data(
         diff_array,
         transform,
         crs,
-        unknown_boarder_size,
+        buffer_in_buffer_out_size,
         save_original_polygons=save_original_polygons,
         save_buffer_in_polygons=save_buffer_in_polygons,
         save_buffer_in_buffer_out_polygons=save_buffer_in_buffer_out_polygons,
@@ -167,7 +177,18 @@ if __name__ == "__main__":
     parser.add_argument("--probs_path", required=True, help="Path to probability GeoTIFF")
     parser.add_argument("--geopackage", required=True, help="Path to input geopackage")
     parser.add_argument("--polygon_output_folder", required=True, help="Path to output folder for polygons")
-    parser.add_argument("--unknown_boarder_size", type=float, default=1.5)
+    parser.add_argument(
+        "--unknown_boarder_size",
+        type=float,
+        required=True,
+        help="Ignore-border width in ground units when rasterizing labels. Required; no default.",
+    )
+    parser.add_argument(
+        "--buffer_in_buffer_out_size",
+        type=float,
+        required=True,
+        help="Polygon shrink-then-grow distance in ground units. Required; no default. 0 disables the buffer.",
+    )
     parser.add_argument("--create_new_mapping", action="store_true", help="Whether to create a new mapping")
     parser.add_argument("--path_to_mapping", type=str, default="/mnt/T/mnt/trainingdata/bygningsudpegning/iter_4/roof_no_roof_mapping.txt")
     parser.add_argument(
@@ -187,6 +208,7 @@ if __name__ == "__main__":
         probs = src.read()
         transform = src.transform
         crs = src.crs
+        bounds = tuple(src.bounds)
 
     # Load geopackage
     geopackage_data = gpd.read_file(args.geopackage)
@@ -197,9 +219,11 @@ if __name__ == "__main__":
         geopackage_data=geopackage_data,
         transform=transform,
         crs=crs,
+        bounds=bounds,
         path_to_mapping=args.path_to_mapping,
         create_new_mapping=args.create_new_mapping,
         unknown_boarder_size=args.unknown_boarder_size,
+        buffer_in_buffer_out_size=args.buffer_in_buffer_out_size,
         change_detection_threshold=args.change_detection_threshold,
     )
 

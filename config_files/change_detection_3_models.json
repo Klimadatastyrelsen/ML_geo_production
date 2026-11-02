@@ -13,6 +13,7 @@
     "stop_after_tile": null,
     "geopackage": "/mnt/T/mnt/trainingdata/bygningsudpegning/bygninger20251115180505.gpkg",
     "unknown_boarder_size": 1.5,
+    "buffer_in_buffer_out_size": 1.5,
     "change_detection_threshold": 0.01,
     "create_new_mapping": false,
     "path_to_mapping": "/mnt/T/mnt/trainingdata/bygningsudpegning/iter_4/roof_no_roof_mapping.txt",
