@@ -1,0 +1,63 @@
+{
+    "hf_repo_id": "rasmuspjohansson/KDS_Permeable_surfaces",
+
+    "save_probs": true,
+    "save_preds": true,
+    "do_change_detection": false,
+    "save_change_detection_polygons": false,
+
+    "path_to_map_creation_output_folder": "./tmpfolder/",
+    "probs_path": "./tmpfolder/bef_probs.tif",
+    "preds_path": "./tmpfolder/bef_preds.tif",
+    "polygon_output_folder": "./tmpfolder/polygons",
+
+    "geopackage": null,
+    "saved_models": [
+        "./models/bef_iter_122_swin_upernet_100ep_crop992_bf16_ssd_16.pth",
+        "./models/bef_iter_121_effnet_L_100ep_crop992_bf16_ssd_36.pth",
+        "./models/iter_79_99.pth"
+    ],
+    "model_names": [
+        "swin-small-upernet",
+        "tf_efficientnetv2_l.in21k",
+        "resnet34"
+    ],
+    "n_classes": 11,
+    "means": [
+        [0.485, 0.456, 0.406, 0.40779021, 0.485, 0.456, 0.406, 0.40779021, 0.5, 0.5],
+        [0.485, 0.456, 0.406, 0.40779021, 0.485, 0.456, 0.406, 0.40779021, 0.5, 0.5],
+        [0.485, 0.456, 0.406, 0.40779021, 0.485, 0.456, 0.406, 0.40779021, 0.5, 0.5]
+    ],
+    "stds": [
+        [0.229, 0.224, 0.225, 0.15176421, 0.229, 0.224, 0.225, 0.15176421, 1.0, 1.0],
+        [0.229, 0.224, 0.225, 0.15176421, 0.229, 0.224, 0.225, 0.15176421, 1.0, 1.0],
+        [0.229, 0.224, 0.225, 0.15176421, 0.229, 0.224, 0.225, 0.15176421, 1.0, 1.0]
+    ],
+    "channels": [
+        [[0, 1, 2], [0], [0, 1, 2], [0], [0], [0]],
+        [[0, 1, 2], [0], [0, 1, 2], [0], [0], [0]],
+        [[0, 1, 2], [0], [0, 1, 2], [0], [0], [0]]
+    ],
+    "data_types": [
+        ["rgb", "cir", "OrtoRGB", "OrtoCIR", "DSM", "DTM"],
+        ["rgb", "cir", "OrtoRGB", "OrtoCIR", "DSM", "DTM"],
+        ["rgb", "cir", "OrtoRGB", "OrtoCIR", "DSM", "DTM"]
+    ],
+    "crs": "EPSG:25832",
+    "resolution": 0.1,
+    "batch_size": 4,
+    "patch_size": 992,
+    "num_workers": 4,
+    "path_to_codes": "../multi_channel_dataset_creation/example_dataset/labels/ground_surface_codes.txt",
+    "overlap": 40,
+    "remove_tmp_files": false,
+    "bounds": [
+        573826.0,
+        6224615.0,
+        574126.0,
+        6224915.0
+    ],
+    "image_paths": [
+        "../multi_channel_dataset_creation/example_dataset/data/rgb/O2021_82_24_1_0020_00004289.tif"
+    ]
+}

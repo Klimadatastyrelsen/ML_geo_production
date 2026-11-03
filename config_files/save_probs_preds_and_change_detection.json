@@ -1,4 +1,6 @@
 {
+    "hf_repo_id": "rasmuspjohansson/KDS_buildings",
+
     "save_probs": true,
     "save_preds": true,
     "do_change_detection": true,

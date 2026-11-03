@@ -3,6 +3,7 @@
 
 import argparse
 import glob
+import json
 import shutil
 import sys
 from pathlib import Path
@@ -90,11 +91,27 @@ def list_files_for_download(api: HfApi, repo_id: str) -> tuple[HfApi, list[str]]
         return anonymous, anonymous.list_repo_files(repo_id=repo_id, repo_type="model")
 
 
-def download(api: HfApi, dest_dir: str, repo_id: str, dry_run: bool):
+def load_config_models(config_path: Path) -> tuple[str | None, list[str]]:
+    """Return (hf_repo_id, model file names) from a process_images-style JSON config."""
+    parsed_json = json.loads(config_path.read_text())
+    names = [Path(p).name for p in parsed_json.get("saved_models") or []]
+    if not names:
+        print(f"Error: no saved_models in {config_path}", file=sys.stderr)
+        sys.exit(1)
+    return parsed_json.get("hf_repo_id"), names
+
+
+def download(api: HfApi, dest_dir: str, repo_id: str, dry_run: bool, only: list[str] | None = None):
     dest = ensure_dest_dir(Path(dest_dir))
 
     api, all_files = list_files_for_download(api, repo_id)
     pth_files = sorted(f for f in all_files if f.endswith(".pth"))
+    if only is not None:
+        missing = sorted(set(only) - set(pth_files))
+        if missing:
+            print(f"Error: not in repo {repo_id}: {missing}", file=sys.stderr)
+            sys.exit(1)
+        pth_files = sorted(only)
     if not pth_files:
         print(f"No .pth files found in repo {repo_id}")
         return
@@ -130,16 +147,28 @@ def main():
 
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--upload", action="store_true", help="Upload .pth file(s) to the repo")
-    mode.add_argument("--download", action="store_true", help="Download all .pth files from the repo")
+    mode.add_argument("--download", action="store_true",
+                      help="Download .pth files from the repo (all of them, or only those in --config)")
 
     parser.add_argument("--file_path", required=True, nargs="+",
                         help="Upload: path(s) or glob pattern for .pth files. Download: destination directory.")
-    parser.add_argument("--repo_id", default="rasmuspjohansson/KDS_buildings", help="Hugging Face repo id")
+    parser.add_argument("--config", type=Path, default=None,
+                        help="Download only the saved_models of this JSON config, from its hf_repo_id")
+    parser.add_argument("--repo_id", default=None,
+                        help="Hugging Face repo id (default: the config's hf_repo_id, else rasmuspjohansson/KDS_buildings)")
     parser.add_argument("--token_file", type=Path, default=None,
                         help="Path to HF token file (required for upload; optional for download of public repos)")
     parser.add_argument("--dry_run", action="store_true", help="Print actions without executing")
 
     args = parser.parse_args()
+
+    only = None
+    if args.config is not None:
+        if not args.download:
+            parser.error("--config is only used with --download")
+        config_repo_id, only = load_config_models(args.config)
+        args.repo_id = args.repo_id or config_repo_id
+    args.repo_id = args.repo_id or "rasmuspjohansson/KDS_buildings"
 
     if args.dry_run:
         token = None
@@ -155,7 +184,7 @@ def main():
         if len(args.file_path) != 1:
             print("Error: --download requires exactly one directory path", file=sys.stderr)
             sys.exit(1)
-        download(api, args.file_path[0], args.repo_id, args.dry_run)
+        download(api, args.file_path[0], args.repo_id, args.dry_run, only)
 
 
 if __name__ == "__main__":

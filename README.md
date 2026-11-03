@@ -96,9 +96,47 @@ The model repo is public, so downloading works without a token; `--token_file` i
 python src/ML_geo_production/download_upload_models_hf.py --download --token_file ./my_hugging_face_token.txt --file_path ../ML_Production/models/
 ```
 
-This downloads all `.pth` model files from the default Hugging Face repo. Use `--repo_id` if your models are in a different repo.
+This downloads all `.pth` model files from the default Hugging Face repo. Use `--repo_id` if your models are in a different repo, or `--config <json>` to download only the models that config uses, from the repo named by its `hf_repo_id` (see [Examples](#examples)).
 
 **Note:** The example models were trained using the training code from: https://github.com/SDFIdk/ML_model_training
+
+------------------------------------------------------------------------
+
+## Examples
+
+Both examples run on the same image from the
+[multi_channel_dataset_creation](https://github.com/Klimadatastyrelsen/multi_channel_dataset_creation)
+example dataset (cloned side-by-side, see above). Each first downloads only
+the models it needs from Hugging Face, then writes its results to `./tmpfolder/`.
+
+### Building change detection
+
+An ensemble of three building models from
+[KDS_buildings](https://huggingface.co/rasmuspjohansson/KDS_buildings)
+predicts buildings and compares them with the building polygons in a
+GeoPackage. Differences are saved as change-detection polygons.
+
+```bash
+python src/ML_geo_production/download_upload_models_hf.py --download --config config_files/save_probs_preds_and_change_detection.json --file_path ./models/
+python src/ML_geo_production/process_images.py --json config_files/save_probs_preds_and_change_detection.json
+```
+
+Output: `tmpfolder/probs.tif`, `tmpfolder/preds.tif` and `tmpfolder/polygons/probs.shp` (the changes).
+
+### Befaestelse (BEF)
+
+The ensemble used for the 2026 national mapping of surface types (asphalt,
+tiles, gravel, unpaved, cobblestone, solar panels, ...), from
+[KDS_Permeable_surfaces](https://huggingface.co/rasmuspjohansson/KDS_Permeable_surfaces).
+It uses all 10 channels: rgb, cir, OrtoRGB, OrtoCIR, DSM and DTM.
+
+```bash
+python src/ML_geo_production/download_upload_models_hf.py --download --config config_files/bef_example.json --file_path ./models/
+python src/ML_geo_production/create_prediction_raster.py --json config_files/bef_example.json
+```
+
+Output: `tmpfolder/bef_probs.tif` and `tmpfolder/bef_preds.tif`. Class names are in
+`../multi_channel_dataset_creation/example_dataset/labels/ground_surface_codes.txt`.
 
 ------------------------------------------------------------------------
 
