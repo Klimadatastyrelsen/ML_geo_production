@@ -155,7 +155,7 @@ def main():
     parser.add_argument("--config", type=Path, default=None,
                         help="Download only the saved_models of this JSON config, from its hf_repo_id")
     parser.add_argument("--repo_id", default=None,
-                        help="Hugging Face repo id (default: the config's hf_repo_id, else rasmuspjohansson/KDS_buildings)")
+                        help="Hugging Face repo id (default: the config's hf_repo_id, else Danish-Agency-for-Cimate-Data/KDS_buildings)")
     parser.add_argument("--token_file", type=Path, default=None,
                         help="Path to HF token file (required for upload; optional for download of public repos)")
     parser.add_argument("--dry_run", action="store_true", help="Print actions without executing")
@@ -168,7 +168,7 @@ def main():
             parser.error("--config is only used with --download")
         config_repo_id, only = load_config_models(args.config)
         args.repo_id = args.repo_id or config_repo_id
-    args.repo_id = args.repo_id or "rasmuspjohansson/KDS_buildings"
+    args.repo_id = args.repo_id or "Danish-Agency-for-Cimate-Data/KDS_buildings"
 
     if args.dry_run:
         token = None

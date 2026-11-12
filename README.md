@@ -90,7 +90,7 @@ the dataset included in that repository.
 
 ### Download example models
 
-The model repo is public, so downloading works without a token; `--token_file` is optional for `--download` (an expired or rejected token falls back to an anonymous download) and required for `--upload`. When repos are cloned as siblings, models are stored once under **`../ML_Production/models/`** (this repo's `./models/` may be a symlink). Then run:
+The KDS models and datasets on Hugging Face are private. They are available for non-commercial use; email rajoh@kds.dk for access. Downloading needs a token (`--token_file`). When repos are cloned as siblings, models are stored once under **`../ML_Production/models/`** (this repo's `./models/` may be a symlink). Then run:
 
 ```bash
 python src/ML_geo_production/download_upload_models_hf.py --download --token_file ./my_hugging_face_token.txt --file_path ../ML_Production/models/
@@ -112,7 +112,7 @@ the models it needs from Hugging Face, then writes its results to `./tmpfolder/`
 ### Building change detection
 
 An ensemble of three building models from
-[KDS_buildings](https://huggingface.co/rasmuspjohansson/KDS_buildings)
+[KDS_buildings](https://huggingface.co/Danish-Agency-for-Cimate-Data/KDS_buildings)
 predicts buildings and compares them with the building polygons in a
 GeoPackage. Differences are saved as change-detection polygons.
 
@@ -127,7 +127,7 @@ Output: `tmpfolder/probs.tif`, `tmpfolder/preds.tif` and `tmpfolder/polygons/pro
 
 The ensemble used for the 2026 national mapping of surface types (asphalt,
 tiles, gravel, unpaved, cobblestone, solar panels, ...), from
-[KDS_Permeable_surfaces](https://huggingface.co/rasmuspjohansson/KDS_Permeable_surfaces).
+[KDS_Permeable_surfaces](https://huggingface.co/Danish-Agency-for-Cimate-Data/KDS_Permeable_surfaces).
 It uses all 10 channels: rgb, cir, OrtoRGB, OrtoCIR, DSM and DTM.
 
 ```bash
