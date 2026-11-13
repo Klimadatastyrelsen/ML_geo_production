@@ -63,6 +63,8 @@ def main():
             crs = dst_crs,
             bounds=  parsed_json["bounds"],
             change_detection_threshold=parsed_json["change_detection_threshold"],
+            unknown_boarder_size=parsed_json["unknown_boarder_size"],
+            buffer_in_buffer_out_size=parsed_json["buffer_in_buffer_out_size"],
             )
         #save change detection polygons to disk
         #

@@ -833,7 +833,8 @@ if __name__ == "__main__":
         crs=dst_crs,
         bounds=parsed_json["bounds"],
         change_detection_threshold=parsed_json["change_detection_threshold"],
-        unknown_boarder_size=parsed_json.get("unknown_boarder_size", 1.5),
+        unknown_boarder_size=parsed_json["unknown_boarder_size"],
+        buffer_in_buffer_out_size=parsed_json["buffer_in_buffer_out_size"],
         path_to_mapping=parsed_json.get(
             "path_to_mapping",
             "/mnt/T/mnt/trainingdata/bygningsudpegning/iter_4/roof_no_roof_mapping.txt",

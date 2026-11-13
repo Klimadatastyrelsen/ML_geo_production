@@ -68,28 +68,36 @@ def main():
 
     token_file = repo_root / "my_hugging_face_token.txt"
     token_arg = f"--token_file {token_file} " if token_file.exists() else ""
-    log_section(LOG_PATH, "=== download_upload_models_hf.py (download) ===")
-    ret = stream_run(
-        f"{sys.executable} src/ML_geo_production/download_upload_models_hf.py --download {token_arg}--file_path {models_dir}/",
-        LOG_PATH,
-        cwd=repo_root,
-        env=env_geotiff,
-        timeout=TIMEOUT_DEFAULT,
-    )
-    log_message(LOG_PATH, f"Exit code: {ret}")
-    if ret != 0:
-        return ret
+    examples = [
+        ("process_images.py", "config_files/save_probs_preds_and_change_detection.json"),
+        ("create_prediction_raster.py", "config_files/bef_example.json"),
+    ]
+    for script, config in examples:
+        log_section(LOG_PATH, f"=== download_upload_models_hf.py (download, {config}) ===")
+        ret = stream_run(
+            f"{sys.executable} src/ML_geo_production/download_upload_models_hf.py --download {token_arg}"
+            f"--config {config} --file_path {models_dir}/",
+            LOG_PATH,
+            cwd=repo_root,
+            env=env_geotiff,
+            timeout=TIMEOUT_DEFAULT,
+        )
+        log_message(LOG_PATH, f"Exit code: {ret}")
+        if ret != 0:
+            return ret
 
-    log_section(LOG_PATH, "=== process_images.py (save_probs_preds_and_change_detection.json) ===")
-    ret = stream_run(
-        f"{sys.executable} src/ML_geo_production/process_images.py --json config_files/save_probs_preds_and_change_detection.json",
-        LOG_PATH,
-        cwd=repo_root,
-        env=env_geotiff,
-        timeout=TIMEOUT_DEFAULT,
-    )
-    log_message(LOG_PATH, f"Exit code: {ret}")
-    return ret
+        log_section(LOG_PATH, f"=== {script} ({config}) ===")
+        ret = stream_run(
+            f"{sys.executable} src/ML_geo_production/{script} --json {config}",
+            LOG_PATH,
+            cwd=repo_root,
+            env=env_geotiff,
+            timeout=TIMEOUT_DEFAULT,
+        )
+        log_message(LOG_PATH, f"Exit code: {ret}")
+        if ret != 0:
+            return ret
+    return 0
 
 
 if __name__ == "__main__":

@@ -507,10 +507,15 @@ def load_unet_from_state(
         elif model_name == "resnet50":
             learn = unet_learner(dls, resnet50, n_out=n_classes, pretrained=False, n_in=eff_n_in)
         else:
-            # These checkpoints were trained with bottleneck unset (None). "conv" adds
-            # decoder.bottleneck weights the saved state dict does not contain.
+            # "conv" adds decoder.bottleneck weights. Use it only when the
+            # checkpoint has those keys; other timm unets were trained with
+            # bottleneck left unset.
+            has_unet_bottleneck = any(
+                str(key).endswith("decoder.bottleneck.0.weight") for key in state
+            )
+            bottleneck = "conv" if has_unet_bottleneck else None
             learn = load_saved_timm_unet(
-                dls, model_name, bottleneck=None, n_classes=n_classes, n_in=eff_n_in
+                dls, model_name, bottleneck=bottleneck, n_classes=n_classes, n_in=eff_n_in
             )
 
         # 2. Load Weights (The Fast Step)
